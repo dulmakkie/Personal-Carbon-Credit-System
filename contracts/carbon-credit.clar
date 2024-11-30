@@ -36,3 +36,57 @@
   )
 )
 
+;; Update user's carbon footprint
+(define-public (update-carbon-footprint (amount uint))
+  (let
+    (
+      (user tx-sender)
+      (user-info (default-to { carbon-footprint: u0, last-update: u0 } (map-get? user-data user)))
+    )
+    (ok (map-set user-data
+      user
+      (merge user-info
+        {
+          carbon-footprint: (+ (get carbon-footprint user-info) amount),
+          last-update: block-height
+        }
+      )
+    ))
+  )
+)
+
+;; Mint carbon credits (only contract owner)
+(define-public (mint-credits (amount uint) (recipient principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ft-mint? carbon-credit amount recipient)
+  )
+)
+
+;; Transfer carbon credits
+(define-public (transfer-credits (amount uint) (sender principal) (recipient principal))
+  (begin
+    (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
+    (ft-transfer? carbon-credit amount sender recipient)
+  )
+)
+
+;; Burn carbon credits
+(define-public (burn-credits (amount uint) (owner principal))
+  (begin
+    (asserts! (is-eq tx-sender owner) ERR_UNAUTHORIZED)
+    (ft-burn? carbon-credit amount owner)
+  )
+)
+
+;; Read-only functions
+
+;; Get user's carbon footprint
+(define-read-only (get-carbon-footprint (user principal))
+  (ok (get carbon-footprint (default-to { carbon-footprint: u0, last-update: u0 } (map-get? user-data user))))
+)
+
+;; Get user's credit balance
+(define-read-only (get-credit-balance (user principal))
+  (ok (ft-get-balance carbon-credit user))
+)
